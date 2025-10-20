@@ -1,0 +1,290 @@
+#include <ArduinoBLE.h>
+
+// Pines del sensor ultrasónico
+const int disparo = 10;
+const int echo = 9;
+
+// Pines del motor
+const int motorPin1 = 11;
+const int motorPin2 = 12;
+
+// Servicio y características BLE
+BLEService motorService("19B10000-E8F2-537E-4F6C-D104768A1214");
+
+// Característica para RECIBIR comandos desde la app
+BLEStringCharacteristic comandoCharacteristic(
+  "19B10001-E8F2-537E-4F6C-D104768A1214", 
+  BLERead | BLEWrite, 
+  20
+);
+
+// Característica para ENVIAR datos del sensor a la app
+BLEStringCharacteristic sensorCharacteristic(
+  "19B10002-E8F2-537E-4F6C-D104768A1214", 
+  BLERead | BLENotify, 
+  50
+);
+
+// Variables
+long durPulso;
+int centimetros = 0;
+bool modoAutomatico = false;
+unsigned long ultimoEnvio = 0;
+unsigned long ultimaLecturaSensor = 0;
+unsigned long ultimoControlAuto = 0;
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // Espera a que se inicialice el puerto serial
+  }
+  
+  Serial.println("==================================");
+  Serial.println("INICIANDO SISTEMA MOTOR BLE");
+  Serial.println("==================================");
+  
+  // Configurar pines
+  pinMode(disparo, OUTPUT);
+  pinMode(echo, INPUT);
+  pinMode(motorPin1, OUTPUT);
+  pinMode(motorPin2, OUTPUT);
+  
+  Serial.println("Pines configurados:");
+  Serial.println("   - Sensor: Pin 10 (TRIG), Pin 9 (ECHO)");
+  Serial.println("   - Motor: Pin 11 (IN1), Pin 12 (IN2)");
+  
+  detenerMotor();
+  Serial.println("Motor inicializado en estado DETENIDO");
+  
+  // Inicializar BLE
+  Serial.println("");
+  Serial.println("INICIANDO BLUETOOTH BLE...");
+  
+  if (!BLE.begin()) {
+    Serial.println("ERROR CRITICO: No se pudo iniciar BLE!");
+    Serial.println("   Verifica que el Arduino R4 WiFi este funcionando");
+    while (1) {
+      delay(1000);
+      Serial.println("Reinicia el Arduino para intentar nuevamente...");
+    }
+  }
+
+  Serial.println("BLE iniciado correctamente");
+  
+  // Configurar BLE
+  BLE.setLocalName("ARDUINO");
+  BLE.setAdvertisedService(motorService);
+  
+  motorService.addCharacteristic(comandoCharacteristic);
+  motorService.addCharacteristic(sensorCharacteristic);
+  
+  BLE.addService(motorService);
+  
+  comandoCharacteristic.writeValue("LISTO");
+  sensorCharacteristic.writeValue("DISTANCIA:0,MODO:MANUAL,MOTOR:DETENIDO");
+  
+  BLE.advertise();
+  
+  Serial.println("BLUETOOTH CONFIGURADO:");
+  Serial.println("   Nombre: 'ARDUINO'");
+  Serial.println("   UUID Servicio: 19B10000-E8F2-537E-4F6C-D104768A1214");
+  Serial.println("   Anunciando servicio BLE...");
+  Serial.println("");
+  Serial.println("==================================");
+  Serial.println("INSTRUCCIONES PARA CONECTAR:");
+  Serial.println("   1. Ve a AJUSTES → BLUETOOTH en tu telefono");
+  Serial.println("   2. Busca dispositivos");
+  Serial.println("   3. Debe aparecer: 'ARDUINO'");
+  Serial.println("   4. Conectate desde la app o ajustes");
+  Serial.println("==================================");
+  Serial.println("Esperando conexion BLE...");
+  Serial.println("");
+}
+
+void loop() {
+  // Leer sensor ultrasónico
+  if (millis() - ultimaLecturaSensor >= 200) {
+    medircm();
+    ultimaLecturaSensor = millis();
+  }
+  
+  // Control automatico SOLO si esta en modo automatico
+  if (modoAutomatico) {
+    if (millis() - ultimoControlAuto >= 300) {
+      controlarMotorAutomatico(centimetros);
+      ultimoControlAuto = millis();
+    }
+  }
+  
+  // Esperar por conexiones BLE
+  BLEDevice central = BLE.central();
+  
+  if (central) {
+    Serial.println("");
+    Serial.println("CONEXION DETECTADA");
+    Serial.print("Dispositivo conectado: ");
+    Serial.println(central.address());
+    Serial.print("RSSI: ");
+    Serial.println(central.rssi());
+    Serial.println("Conexion BLE exitosa!");
+    Serial.println("Ya puedes controlar el motor desde la app");
+    Serial.println("");
+    
+    // Mientras este conectado
+    while (central.connected()) {
+      // 1. Procesar comandos recibidos desde la app
+      if (comandoCharacteristic.written()) {
+        String comando = comandoCharacteristic.value();
+        comando.trim();
+        procesarComandoBLE(comando);
+      }
+      
+      // 2. Leer sensor durante conexion
+      if (millis() - ultimaLecturaSensor >= 200) {
+        medircm();
+        ultimaLecturaSensor = millis();
+      }
+      
+      // 3. Control automatico durante conexion
+      if (modoAutomatico) {
+        if (millis() - ultimoControlAuto >= 300) {
+          controlarMotorAutomatico(centimetros);
+          ultimoControlAuto = millis();
+        }
+      }
+      
+      // 4. Enviar datos del sensor cada 500ms
+      if (millis() - ultimoEnvio >= 500) {
+        enviarEstadoBLE();
+        ultimoEnvio = millis();
+        
+        // Mostrar en Serial
+        static unsigned long ultimoPrint = 0;
+        if (millis() - ultimoPrint >= 1000) {
+          Serial.print("Modo ");
+          Serial.print(modoAutomatico ? "AUTO" : "MANUAL");
+          Serial.print(" | Sensor: ");
+          Serial.print(centimetros);
+          Serial.print("cm | Motor: ");
+          Serial.println(obtenerEstadoMotor());
+          ultimoPrint = millis();
+        }
+      }
+      
+      delay(50);
+    }
+    
+    Serial.println("");
+    Serial.println("DESCONECTADO");
+    Serial.print("   Dispositivo: ");
+    Serial.println(central.address());
+    Serial.println("   Esperando reconexion...");
+    Serial.println("");
+    
+    detenerMotor();
+    modoAutomatico = false;
+  }
+}
+
+void enviarEstadoBLE() {
+  String estado = "DISTANCIA:" + String(centimetros) + 
+                  ",MODO:" + (modoAutomatico ? "AUTO" : "MANUAL") +
+                  ",MOTOR:" + obtenerEstadoMotor();
+  sensorCharacteristic.writeValue(estado);
+}
+
+void procesarComandoBLE(String comando) {
+  Serial.print("Comando recibido: '");
+  Serial.print(comando);
+  Serial.println("'");
+  
+  if (comando == "DERECHA") {
+    if (!modoAutomatico) {
+      girarDerecha();
+      Serial.println("   Motor girando DERECHA (Manual)");
+    } else {
+      Serial.println("   Modo AUTO activo - Comando manual ignorado");
+    }
+  }
+  else if (comando == "IZQUIERDA") {
+    if (!modoAutomatico) {
+      girarIzquierda();
+      Serial.println("   Motor girando IZQUIERDA (Manual)");
+    } else {
+      Serial.println("   Modo AUTO activo - Comando manual ignorado");
+    }
+  }
+  else if (comando == "DETENER") {
+    detenerMotor();
+    Serial.println("   Motor DETENIDO");
+  }
+  else if (comando == "MODO_AUTO") {
+    modoAutomatico = true;
+    detenerMotor();
+    Serial.println("   === MODO AUTOMATICO ACTIVADO ===");
+    
+    // ENVIAR INMEDIATAMENTE EL NUEVO ESTADO
+    enviarEstadoBLE();
+  }
+  else if (comando == "MODO_MANUAL") {
+    modoAutomatico = false;
+    detenerMotor();
+    Serial.println("   === MODO MANUAL ACTIVADO ===");
+    
+    // ENVIAR INMEDIATAMENTE EL NUEVO ESTADO
+    enviarEstadoBLE();
+  }
+  else {
+    Serial.print("   Comando desconocido: ");
+    Serial.println(comando);
+  }
+}
+
+void medircm() {
+  digitalWrite(disparo, LOW);
+  delayMicroseconds(2);
+  digitalWrite(disparo, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(disparo, LOW);
+  
+  durPulso = pulseIn(echo, HIGH, 30000);
+  centimetros = durPulso / 58;
+}
+
+void controlarMotorAutomatico(int distancia) {
+  if (!modoAutomatico) return;
+  
+  if (distancia >= 10 && distancia <= 20) {
+    girarDerecha();
+  }
+  else if (distancia > 20 && distancia <= 30) {
+    girarIzquierda();
+  }
+  else {
+    detenerMotor();
+  }
+}
+
+void girarDerecha() {
+  digitalWrite(motorPin1, HIGH);
+  digitalWrite(motorPin2, LOW);
+}
+
+void girarIzquierda() {
+  digitalWrite(motorPin1, LOW);
+  digitalWrite(motorPin2, HIGH);
+}
+
+void detenerMotor() {
+  digitalWrite(motorPin1, LOW);
+  digitalWrite(motorPin2, LOW);
+}
+
+String obtenerEstadoMotor() {
+  bool pin1 = digitalRead(motorPin1);
+  bool pin2 = digitalRead(motorPin2);
+  
+  if (pin1 == HIGH && pin2 == LOW) return "DERECHA";
+  if (pin1 == LOW && pin2 == HIGH) return "IZQUIERDA";
+  return "DETENIDO";
+}
