@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#121212"
+    android:gravity="center">
+
+    <!-- Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Desafio-03"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginTop="20dp"
+        android:textColor="#2196F3"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Botón de conexión -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/connectButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Conectar BLE"
+        android:background="@drawable/rounded_blue_button"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Panel de estado -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_red_border"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Estado: No conectado"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvDistance"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="-- cm"
+                android:textSize="14sp"
+                android:textColor="#E1E1E1" />
+
+            <TextView
+                android:id="@+id/tvMotorState"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="--"
+                android:textSize="14sp"
+                android:textColor="#E1E1E1"
+                android:gravity="end" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Botón de cambio de modo -->
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnToggleMode"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:text="Cambiar a Automático"
+        android:background="@drawable/rounded_blue_button"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Panel de control de motor -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_red_border"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Control del Motor"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textColor="#2196F3"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:weightSum="3">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnLeft"
+                android:layout_width="0dp"
+                android:layout_height="70dp"
+                android:layout_weight="1.2"
+                android:text="IZQUIERDA"
+                android:background="@drawable/rounded_blue_button"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnStop"
+                android:layout_width="0dp"
+                android:layout_height="70dp"
+                android:layout_weight="0.6"
+                android:text="STOP"
+                android:background="@drawable/rounded_blue_button"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnRight"
+                android:layout_width="0dp"
+                android:layout_height="70dp"
+                android:layout_weight="1.2"
+                android:text="DERECHA"
+                android:background="@drawable/rounded_blue_button"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Panel de log -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_red_border"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Log de Eventos"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#2196F3"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvLog"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="Iniciando aplicación BLE...\n"
+            android:textSize="11sp"
+            android:padding="10dp"
+            android:background="#000000"
+            android:textColor="#00E676"
+            android:scrollbars="vertical"
+            android:typeface="monospace" />
+
+    </LinearLayout>
+
+    <!-- Escudo del Barcelona al final -->
+    <ImageView
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:src="@drawable/escudo_barcelona"
+        android:layout_gravity="center"
+        android:contentDescription="Escudo FC Barcelona"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="12dp" />
+
+</LinearLayout>
